@@ -1,66 +1,89 @@
-/* Controls plugin for baron 0.6+ */
-(function(window, undefined) {
-    var controls = function(params) {
-        var forward, backward, track, screen, timer,
-            self = this; // AAAAAA!!!!!11
+'use strict'
 
-        screen = params.screen || .9;
+/* Controls plugin for baron */
 
-        if (params.forward) {
-            forward = this.$(params.forward, this.clipper);
+var qs = require('./utils').qs
 
-            this.event(forward, 'click', function() {
-                var y = self.pos() - params.delta || 30;
-                
-                self.pos(y);
-            });
+module.exports = function controls(params) {
+    var forward, backward, track, screen,
+        self = this,
+        event
+
+    screen = params.screen || 0.9
+
+    if (params.forward) {
+        forward = qs(params.forward, this.clipper)
+
+        event = {
+            element: forward,
+
+            handler: function() {
+                var y = self.pos() + (params.delta || 30)
+
+                self.pos(y)
+            },
+
+            type: 'click'
         }
 
-        if (params.backward) {
-            backward = this.$(params.backward, this.clipper);
+        this._eventHandlers.push(event) // For auto-dispose
+        this.event(event.element, event.type, event.handler, 'on')
+    }
 
-            this.event(backward, 'click', function() {
-                var y = self.pos() + params.delta || 30;
+    if (params.backward) {
+        backward = qs(params.backward, this.clipper)
 
-                self.pos(y);
-            });
+        event = {
+            element: backward,
+
+            handler: function() {
+                var y = self.pos() - (params.delta || 30)
+
+                self.pos(y)
+            },
+
+            type: 'click'
         }
 
-        if (params.track) {
-            if (params.track === true) {
-                track = this.track;
-            } else {
-                track = this.$(params.track, this.clipper)[0];
-            }
+        this._eventHandlers.push(event) // For auto-dispose
+        this.event(event.element, event.type, event.handler, 'on')
+    }
 
-            if (track) {
-                this.event(track, 'mousedown', function(e) {
+    if (params.track) {
+        if (params.track === true) {
+            track = this.track
+        } else {
+            track = qs(params.track, this.clipper)
+        }
+
+        if (track) {
+            event = {
+                element: track,
+
+                handler: function(e) {
+                    // https://github.com/Diokuz/baron/issues/121
+                    if (e.target != track) return
+
                     var x = e['offset' + self.origin.x],
                         xBar = self.bar[self.origin.offsetPos],
-                        sign = 0;
+                        sign = 0
 
                     if (x < xBar) {
-                        sign = -1;
+                        sign = -1
                     } else if (x > xBar + self.bar[self.origin.offset]) {
-                        sign = 1;
+                        sign = 1
                     }
 
-                    var y = self.pos() + sign * screen * self.scroller[self.origin.client];
-                    self.pos(y);
-                });
+                    var y = self.pos() + sign * screen * self.scroller[self.origin.client]
+
+                    self.pos(y)
+                },
+
+                type: 'mousedown'
             }
+
+            this._eventHandlers.push(event) // For auto-dispose
+            this.event(event.element, event.type, event.handler, 'on')
         }
-
-    };
-
-    baron.fn.controls = function(params) {
-        var i = 0;
-
-        while (this[i]) {
-            controls.call(this[i], params);
-            i++;
-        }
-
-        return this;
-    };
-})(window);
+    }
+}
